@@ -12,7 +12,7 @@ Route::get('/', function () {
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
-});
+})->name('main');
 
 Route::get('/room/{id}', function () {
     return Inertia::render('Dashboard');
