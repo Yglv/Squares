@@ -54,8 +54,14 @@ export default function Modal({
                     <Dialog.Panel
                         className={`mb-6 p-10 bg-white rounded-xl overflow-hidden shadow-xl transform transition-all sm:w-full sm:mx-auto ${maxWidthClass}`}
                     >
-                        <Dialog.Title className="text-xl font-medium leading-6 text-gray-900">
-                            Подключиться
+                        <Dialog.Title className="text-xl flex justify-between font-medium leading-6 text-gray-900">
+                            <p className="text-2xl">Подключиться</p>
+                            <a
+                                onClick={close}
+                                className="cursor-pointer text-black hover:text-red-500"
+                            >
+                                &#9587;
+                            </a>
                         </Dialog.Title>
                         {children}
                     </Dialog.Panel>
