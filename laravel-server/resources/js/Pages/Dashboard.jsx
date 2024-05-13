@@ -3,6 +3,9 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 import styled from "styled-components";
+import GuestLayout from "@/Layouts/GuestLayout";
+import img from "../../assets/logo.png";
+import { Link, Head } from "@inertiajs/react";
 
 const Container = styled.div`
     padding: 20px;
@@ -27,12 +30,11 @@ const Video = (props) => {
         });
     }, []);
 
-    return <StyledVideo playsInline autoPlay ref={ref} />;
-};
-
-const videoConstraints = {
-    height: window.innerHeight / 2,
-    width: window.innerWidth / 2,
+    return (
+        <>
+            <StyledVideo playsInline autoPlay ref={ref} />
+        </>
+    );
 };
 
 const getLastItem = (path) => path.substring(path.lastIndexOf("/") + 1);
@@ -42,6 +44,11 @@ export default function Dashboard({ auth }) {
     const socketRef = useRef();
     const userVideo = useRef();
     const peersRef = useRef([]);
+    const userStream = useRef();
+    const [isVideo, setIsVideo] = useState(false);
+    const [isAudio, setIsAudio] = useState(false);
+    const isAdmin = useRef(false);
+    const hideVideoButtons = useRef([]);
     const roomID = getLastItem(window.location.href);
 
     useEffect(() => {
@@ -49,11 +56,17 @@ export default function Dashboard({ auth }) {
         console.log(roomID);
         console.log(peers);
         navigator.mediaDevices
-            .getUserMedia({ video: videoConstraints, audio: true })
+            .getUserMedia({ video: true, audio: true })
             .then((stream) => {
+                userStream.current = stream;
+                console.log(userStream);
                 userVideo.current.srcObject = stream;
                 socketRef.current.emit("join room", roomID);
                 socketRef.current.on("all users", (users) => {
+                    console.log(`users: ${users}`);
+                    if (users.length === 0) {
+                        isAdmin.current = true;
+                    }
                     const peers = [];
                     users.forEach((userID) => {
                         const peer = createPeer(
@@ -72,6 +85,22 @@ export default function Dashboard({ auth }) {
 
                 socketRef.current.on("user joined", (payload) => {
                     console.log("user joined");
+                    if (isAdmin.current) {
+                        console.log("i am admin");
+                        hideVideoButtons.current.push(
+                            <>
+                                <button
+                                    onClick={(e) => handleToggleRemoteVideo(e)}
+                                    data-id={payload.callerID}
+                                    data-video="hide"
+                                    className="bg-blue-500 rounded-full w-[100px] h-[100px] mr-6  text-white"
+                                >
+                                    <i className="fa-solid fa-video text-xl"></i>
+                                </button>
+                            </>
+                        );
+                        console.log(hideVideoButtons.current);
+                    }
                     const peer = addPeer(
                         payload.signal,
                         payload.callerID,
@@ -91,6 +120,9 @@ export default function Dashboard({ auth }) {
                     );
                     item.peer.signal(payload.signal);
                 });
+
+                socketRef.current.on("hide cam", hideVideo);
+                socketRef.current.on("show cam", showVideo);
             });
     }, []);
 
@@ -101,13 +133,13 @@ export default function Dashboard({ auth }) {
             trickle: false,
             stream,
         });
-        console.log("peer2");
         peer.on("signal", (signal) => {
             socketRef.current.emit("sending signal", {
                 userToSignal,
                 callerID,
                 signal,
             });
+            console.log("peer");
         });
 
         return peer;
@@ -129,18 +161,80 @@ export default function Dashboard({ auth }) {
 
         return peer;
     }
+
+    const handleToggleVideo = (stream) => {
+        console.log(stream);
+        const videoTrack = stream
+            .getTracks()
+            .find((track) => track.kind === "video");
+        if (videoTrack.enabled) {
+            videoTrack.enabled = false;
+            setIsVideo(true);
+        } else {
+            videoTrack.enabled = true;
+            setIsVideo(false);
+        }
+    };
+
+    const handleToggleAudio = (stream) => {
+        console.log(stream);
+        const audioTrack = stream
+            .getTracks()
+            .find((track) => track.kind === "audio");
+        if (audioTrack.enabled) {
+            audioTrack.enabled = false;
+            setIsAudio(true);
+        } else {
+            audioTrack.enabled = true;
+            setIsAudio(false);
+        }
+    };
+
+    const handleToggleRemoteVideo = (e) => {
+        if (e.target.getAttribute("data-video") === "hide") {
+            console.log(e.target.getAttribute("data-id"));
+            e.target.setAttribute("data-video", "show");
+            socketRef.current.emit(
+                "hide remote cam",
+                e.target.getAttribute("data-id")
+            );
+        } else {
+            console.log("show");
+            e.target.setAttribute("data-video", "hide");
+            socketRef.current.emit(
+                "show remote cam",
+                e.target.getAttribute("data-id")
+            );
+        }
+    };
+
+    function hideVideo() {
+        console.log("hide remote video");
+        const videoTrack = userStream.current
+            .getTracks()
+            .find((track) => track.kind === "video");
+        videoTrack.enabled = false;
+    }
+
+    function showVideo() {
+        const videoTrack = userStream.current
+            .getTracks()
+            .find((track) => track.kind === "video");
+        videoTrack.enabled = true;
+    }
+
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={
-                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Dashboard
-                </h2>
-            }
-        >
+        <>
+            <Link href="/" className="flex justify-center">
+                <img
+                    className="h-32 w-32  text-white  lg:text-[#FF2D20]"
+                    viewBox="0 0 62 65"
+                    src={img}
+                ></img>
+            </Link>
             <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <Container>
+                <div className="max-w-7xl  mx-auto sm:px-6 lg:px-8">
+                    <div>
                         <StyledVideo
                             muted
                             ref={userVideo}
@@ -148,11 +242,44 @@ export default function Dashboard({ auth }) {
                             playsInline
                         />
                         {peers.map((peer, index) => {
-                            return <Video key={index} peer={peer} />;
+                            return (
+                                <>
+                                    <div className="flex">
+                                        <Video key={index} peer={peer} />
+                                        {hideVideoButtons.current[index]}
+                                    </div>
+                                </>
+                            );
                         })}
-                    </Container>
+                        <div className="flex">
+                            <button
+                                onClick={() =>
+                                    handleToggleVideo(userStream.current)
+                                }
+                                className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
+                            >
+                                {isVideo ? (
+                                    <i class="fa-solid fa-video text-xl"></i>
+                                ) : (
+                                    <i class="fa-solid fa-video-slash text-xl"></i>
+                                )}
+                            </button>
+                            <button
+                                onClick={() =>
+                                    handleToggleAudio(userStream.current)
+                                }
+                                className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
+                            >
+                                {isAudio ? (
+                                    <i class="fa-solid fa-microphone text-xl"></i>
+                                ) : (
+                                    <i class="fa-solid fa-microphone-slash text-xl"></i>
+                                )}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </>
     );
 }
