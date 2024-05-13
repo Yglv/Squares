@@ -10,8 +10,8 @@ export default function Header(auth) {
     console.log(auth.auth);
     return (
         <>
-            <header className="grid grid-cols-2 items-center gap-2 py-10 lg:grid-cols-3">
-                <div className="flex lg:justify-center lg:col-start-2">
+            <header className=" py-10 ">
+                <div className="flex justify-center items-center">
                     <Link href="/">
                         <img
                             className="h-32 w-32  text-white  lg:text-[#FF2D20]"
@@ -21,7 +21,7 @@ export default function Header(auth) {
                     </Link>
                     {auth.auth.auth ? (
                         <>
-                            <nav className=" border-b border-gray-100">
+                            <nav className=" border-b  border-gray-100">
                                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                                     <div className="flex justify-between h-16">
                                         <div className="flex">
@@ -35,9 +35,13 @@ export default function Header(auth) {
                                                         <span className="inline-flex rounded-md">
                                                             <button
                                                                 type="button"
-                                                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                                                className="inline-flex items-center px-3 py-2 border border-transparent text-xl leading-4 font-medium rounded-md  bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
                                                             >
-                                                                {auth.auth.name}
+                                                                {
+                                                                    auth.auth
+                                                                        .auth
+                                                                        .name
+                                                                }
 
                                                                 <svg
                                                                     className="ms-2 -me-0.5 h-4 w-4"
@@ -61,7 +65,7 @@ export default function Header(auth) {
                                                                 "profile.edit"
                                                             )}
                                                         >
-                                                            Profile
+                                                            Профиль
                                                         </Dropdown.Link>
                                                         <Dropdown.Link
                                                             href={route(
@@ -70,7 +74,7 @@ export default function Header(auth) {
                                                             method="post"
                                                             as="button"
                                                         >
-                                                            Log Out
+                                                            Выйти
                                                         </Dropdown.Link>
                                                     </Dropdown.Content>
                                                 </Dropdown>
