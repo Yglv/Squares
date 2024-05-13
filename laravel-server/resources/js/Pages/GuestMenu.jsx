@@ -1,7 +1,10 @@
 import { Link } from "@inertiajs/react";
 import Card from "./Card";
+import { useState } from "react";
+import RoomEnterForm from "./RoomEnterForm";
 
 export default function GuestMenu() {
+    const [open, setOpen] = useState(false);
     return (
         <>
             <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
@@ -28,14 +31,18 @@ export default function GuestMenu() {
                     />
                 </Link>
 
-                <Link className="flex flex-col items-start group gap-6 lg:pb-32 lg:pt-32 overflow-hidden rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]">
+                <div
+                    onClick={() => setOpen(true)}
+                    className="flex flex-col items-start group gap-6 lg:pb-32 lg:pt-32 overflow-hidden rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
+                >
                     <Card
                         title="Подключиться"
                         pin="fa-solid fa-plus"
                         background="bg-[#FF216A]"
                     />
-                </Link>
+                </div>
             </div>
+            <RoomEnterForm open={open} setOpen={setOpen} />
         </>
     );
 }
