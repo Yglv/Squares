@@ -48,7 +48,7 @@ io.on('connection', socket => {
 
     socket.on("sending signal", payload => {
         io.to(payload.userToSignal).emit('user joined', { signal: payload.signal, callerID: payload.callerID });
-        console.log("user joined")
+        console.log("user joined");
     });
 
     socket.on("returning signal", payload => {
@@ -62,6 +62,16 @@ io.on('connection', socket => {
             room = room.filter(id => id !== socket.id);
             users[roomID] = room;
         }
+    });
+
+    socket.on('hide remote cam', targetId => {
+      console.log(targetId);
+      io.to(targetId).emit('hide cam');
+    });
+
+    socket.on('show remote cam', targetId => {
+      console.log(targetId);
+        io.to(targetId).emit('show cam');
     });
 
 });
