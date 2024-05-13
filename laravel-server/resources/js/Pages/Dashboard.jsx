@@ -23,7 +23,8 @@ const StyledVideo = styled.video`
 
 const Video = (props) => {
     const ref = useRef();
-
+    console.log("video component peer");
+    console.log(props.peer);
     useEffect(() => {
         props.peer.on("stream", (stream) => {
             ref.current.srcObject = stream;
@@ -32,7 +33,7 @@ const Video = (props) => {
 
     return (
         <>
-            <StyledVideo playsInline autoPlay ref={ref} />
+            <StyledVideo controls playsInline autoPlay ref={ref} />
         </>
     );
 };
@@ -45,10 +46,11 @@ export default function Dashboard({ auth }) {
     const userVideo = useRef();
     const peersRef = useRef([]);
     const userStream = useRef();
+    const [copied, setCopied] = useState(false);
     const [isVideo, setIsVideo] = useState(false);
     const [isAudio, setIsAudio] = useState(false);
     const isAdmin = useRef(false);
-    const hideVideoButtons = useRef([]);
+    const hideButtons = useRef([]);
     const roomID = getLastItem(window.location.href);
 
     useEffect(() => {
@@ -78,7 +80,7 @@ export default function Dashboard({ auth }) {
                             peerID: userID,
                             peer,
                         });
-                        peers.push(peer);
+                        peers.push({ peerID: userID, peer });
                     });
                     setPeers(peers);
                 });
@@ -87,7 +89,7 @@ export default function Dashboard({ auth }) {
                     console.log("user joined");
                     if (isAdmin.current) {
                         console.log("i am admin");
-                        hideVideoButtons.current.push(
+                        hideButtons.current.push(
                             <>
                                 <button
                                     onClick={(e) => handleToggleRemoteVideo(e)}
@@ -97,9 +99,17 @@ export default function Dashboard({ auth }) {
                                 >
                                     <i className="fa-solid fa-video text-xl"></i>
                                 </button>
+                                <button
+                                    onClick={(e) => handleToggleRemoteAudio(e)}
+                                    data-id={payload.callerID}
+                                    data-audio="hide"
+                                    className="bg-blue-500 rounded-full w-[100px] h-[100px] mr-6  text-white"
+                                >
+                                    <i className="fa-solid fa-microphone text-xl"></i>
+                                </button>
                             </>
                         );
-                        console.log(hideVideoButtons.current);
+                        console.log(hideButtons.current);
                     }
                     const peer = addPeer(
                         payload.signal,
@@ -107,11 +117,12 @@ export default function Dashboard({ auth }) {
                         stream
                     );
                     peersRef.current.push({
-                        peerID: payload.callerID,
                         peer,
+                        peerID: payload.callerID,
                     });
 
-                    setPeers((users) => [...users, peer]);
+                    const peerObj = { peer, peerID: payload.callerID };
+                    setPeers((users) => [...users, peerObj]);
                 });
 
                 socketRef.current.on("receiving returned signal", (payload) => {
@@ -123,6 +134,22 @@ export default function Dashboard({ auth }) {
 
                 socketRef.current.on("hide cam", hideVideo);
                 socketRef.current.on("show cam", showVideo);
+                socketRef.current.on("hide audio", hideAudio);
+                socketRef.current.on("show audio", showAudio);
+
+                socketRef.current.on("user left", (id) => {
+                    const peerObj = peersRef.current.find(
+                        (p) => p.peerID === id
+                    );
+                    if (peerObj) {
+                        peerObj.peer.destroy();
+                    }
+                    const peers = peersRef.current.filter(
+                        (p) => p.peerID !== id
+                    );
+                    peersRef.current = peers;
+                    setPeers(peers);
+                });
             });
     }, []);
 
@@ -139,7 +166,6 @@ export default function Dashboard({ auth }) {
                 callerID,
                 signal,
             });
-            console.log("peer");
         });
 
         return peer;
@@ -190,19 +216,50 @@ export default function Dashboard({ auth }) {
         }
     };
 
+    const handleToggleShareScreen = (userstream) => {
+        navigator.mediaDevices
+            .getDisplayMedia({ cursor: true, audio: true })
+            .then((stream) => {
+                const screenTrack = stream.getTracks()[0];
+                const videoTrack = userstream
+                    .getTracks()
+                    .find((track) => track.kind === "video");
+                userstream.removeTrack(videoTrack);
+                userstream.addTrack(screenTrack);
+
+                screenTrack.onended = function () {
+                    videoTrack.replaceTrack(userstream.getTracks()[1]);
+                };
+            });
+    };
+
     const handleToggleRemoteVideo = (e) => {
         if (e.target.getAttribute("data-video") === "hide") {
-            console.log(e.target.getAttribute("data-id"));
             e.target.setAttribute("data-video", "show");
             socketRef.current.emit(
                 "hide remote cam",
                 e.target.getAttribute("data-id")
             );
         } else {
-            console.log("show");
             e.target.setAttribute("data-video", "hide");
             socketRef.current.emit(
                 "show remote cam",
+                e.target.getAttribute("data-id")
+            );
+        }
+    };
+
+    const handleToggleRemoteAudio = (e) => {
+        if (e.target.getAttribute("data-audio") === "hide") {
+            e.target.setAttribute("data-audio", "show");
+            socketRef.current.emit(
+                "hide remote audio",
+                e.target.getAttribute("data-id")
+            );
+        } else {
+            e.target.setAttribute("data-audio", "hide");
+            socketRef.current.emit(
+                "show remote audio",
                 e.target.getAttribute("data-id")
             );
         }
@@ -223,6 +280,30 @@ export default function Dashboard({ auth }) {
         videoTrack.enabled = true;
     }
 
+    function hideAudio() {
+        const videoTrack = userStream.current
+            .getTracks()
+            .find((track) => track.kind === "audio");
+        videoTrack.enabled = false;
+    }
+
+    function showAudio() {
+        const videoTrack = userStream.current
+            .getTracks()
+            .find((track) => track.kind === "audio");
+        videoTrack.enabled = true;
+    }
+
+    function copy() {
+        const el = document.createElement("input");
+        el.value = window.location.href;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+        setCopied(true);
+    }
+
     return (
         <>
             <Link href="/" className="flex justify-center">
@@ -237,6 +318,7 @@ export default function Dashboard({ auth }) {
                     <div>
                         <StyledVideo
                             muted
+                            controls
                             ref={userVideo}
                             autoPlay
                             playsInline
@@ -245,8 +327,11 @@ export default function Dashboard({ auth }) {
                             return (
                                 <>
                                     <div className="flex">
-                                        <Video key={index} peer={peer} />
-                                        {hideVideoButtons.current[index]}
+                                        <Video
+                                            key={peer.peerID}
+                                            peer={peer.peer}
+                                        />
+                                        {hideButtons.current[index]}
                                     </div>
                                 </>
                             );
@@ -275,6 +360,30 @@ export default function Dashboard({ auth }) {
                                 ) : (
                                     <i class="fa-solid fa-microphone-slash text-xl"></i>
                                 )}
+                            </button>
+                            <Link
+                                href="/"
+                                className="flex items-center justify-center bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
+                                onClick={() => {
+                                    console.log("disconnect");
+                                    socketRef.current.emit("exit");
+                                }}
+                            >
+                                <i class="fa-solid fa-phone text-xl"></i>
+                            </Link>
+                            <button
+                                onClick={() =>
+                                    handleToggleShareScreen(userStream.current)
+                                }
+                                className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
+                            >
+                                <i class="fa-solid fa-desktop"></i>
+                            </button>
+                            <button
+                                className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
+                                onClick={copy}
+                            >
+                                {!copied ? "Скопировать ссылку" : "Скопировано"}
                             </button>
                         </div>
                     </div>
