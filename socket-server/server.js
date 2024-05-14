@@ -74,6 +74,38 @@ io.on('connection', socket => {
         io.to(targetId).emit('show cam');
     });
 
+    socket.on('hide remote audio', targetId => {
+      console.log(targetId);
+      io.to(targetId).emit('hide audio');
+    });
+
+    socket.on('show remote audio', targetId => {
+      console.log(targetId);
+        io.to(targetId).emit('show audio');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('disconnect')
+      const roomId = socketToRoom[socket.id];
+      let room = users[roomId];
+      if (room) {
+        room = room.filter(id => id !== socket.id);
+        users[roomId] = room;
+      }
+      socket.broadcast.emit('user left', socket.id);
+    });
+
+    socket.on('exit', () => {
+      console.log('disconnect')
+      const roomId = socketToRoom[socket.id];
+      let room = users[roomId];
+      if (room) {
+        room = room.filter(id => id !== socket.id);
+        users[roomId] = room;
+      }
+      socket.broadcast.emit('user left', socket.id);
+    });
+
 });
 
 server.listen(8000, () => console.log('server is running on port 8000'));
