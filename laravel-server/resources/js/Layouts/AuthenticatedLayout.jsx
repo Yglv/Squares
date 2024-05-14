@@ -11,15 +11,22 @@ export default function Authenticated({ user, header, children }) {
         useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <nav className="bg-white border-b border-gray-100">
+        <div className="min-h-screen ">
+            <nav className="">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
+                        <Link href="/" className="mx-auto my-0">
+                            <img
+                                className="h-32 w-32  text-white  lg:text-[#FF2D20]"
+                                viewBox="0 0 62 65"
+                                src={img}
+                            ></img>
+                        </Link>
                         <div className="flex">
                             <div className="shrink-0 flex items-center"></div>
                         </div>
 
-                        <div className="hidden sm:flex sm:items-center sm:ms-6">
+                        <div className="hidden sm:flex sm:items-center sm:ms-6 mt-8">
                             <div className="ms-3 relative">
                                 <Dropdown>
                                     <Dropdown.Trigger>
