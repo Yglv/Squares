@@ -1,20 +1,23 @@
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 import styled from "styled-components";
-import GuestLayout from "@/Layouts/GuestLayout";
 import img from "../../assets/logo.png";
 import { Link, Head } from "@inertiajs/react";
-
-const Container = styled.div`
-    padding: 20px;
-    display: flex;
-    height: 100vh;
-    width: 90%;
-    margin: auto;
-    flex-wrap: wrap;
-`;
+import {
+    handleToggleVideo,
+    handleToggleRemoteVideo,
+    hideVideo,
+    showVideo,
+} from "@/Services/VideoService";
+import {
+    handleToggleAudio,
+    handleToggleRemoteAudio,
+    hideAudio,
+    showAudio,
+} from "@/Services/AudioService";
+import { copyURL } from "@/Services/URLSerivce";
+import { addPeer, createPeer } from "@/Services/PeerService";
 
 const StyledVideo = styled.video`
     height: 40%;
@@ -28,12 +31,16 @@ const Video = (props) => {
     useEffect(() => {
         props.peer.on("stream", (stream) => {
             ref.current.srcObject = stream;
+            const videoTrack = stream
+                .getTracks()
+                .find((track) => track.kind === "audio");
+            videoTrack.enabled = false;
         });
     }, []);
 
     return (
         <>
-            <StyledVideo controls playsInline autoPlay ref={ref} />
+            <StyledVideo controls autoPlay ref={ref} />
         </>
     );
 };
@@ -49,7 +56,9 @@ export default function Dashboard({ auth }) {
     const [copied, setCopied] = useState(false);
     const [isVideo, setIsVideo] = useState(false);
     const [isAudio, setIsAudio] = useState(false);
+    //const [isSharing, setIsSharing] = useState(false);
     const isAdmin = useRef(false);
+    //const screenTrack = useRef();
     const hideButtons = useRef([]);
     const roomID = getLastItem(window.location.href);
 
@@ -74,7 +83,8 @@ export default function Dashboard({ auth }) {
                         const peer = createPeer(
                             userID,
                             socketRef.current.id,
-                            stream
+                            stream,
+                            socketRef.current
                         );
                         peersRef.current.push({
                             peerID: userID,
@@ -86,13 +96,31 @@ export default function Dashboard({ auth }) {
                 });
 
                 socketRef.current.on("user joined", (payload) => {
+                    const peer = addPeer(
+                        payload.signal,
+                        payload.callerID,
+                        stream,
+                        socketRef.current
+                    );
+                    peersRef.current.push({
+                        peer,
+                        peerID: payload.callerID,
+                    });
+                    const peerObj = { peer, peerID: payload.callerID };
+                    setPeers((users) => [...users, peerObj]);
                     console.log("user joined");
+                    console.log(peers);
                     if (isAdmin.current) {
                         console.log("i am admin");
                         hideButtons.current.push(
                             <>
                                 <button
-                                    onClick={(e) => handleToggleRemoteVideo(e)}
+                                    onClick={(e) =>
+                                        handleToggleRemoteVideo(
+                                            e,
+                                            socketRef.current
+                                        )
+                                    }
                                     data-id={payload.callerID}
                                     data-video="hide"
                                     className="bg-blue-500 rounded-full w-[100px] h-[100px] mr-6  text-white"
@@ -100,7 +128,12 @@ export default function Dashboard({ auth }) {
                                     <i className="fa-solid fa-video text-xl"></i>
                                 </button>
                                 <button
-                                    onClick={(e) => handleToggleRemoteAudio(e)}
+                                    onClick={(e) =>
+                                        handleToggleRemoteAudio(
+                                            e,
+                                            socketRef.current
+                                        )
+                                    }
                                     data-id={payload.callerID}
                                     data-audio="hide"
                                     className="bg-blue-500 rounded-full w-[100px] h-[100px] mr-6  text-white"
@@ -109,20 +142,7 @@ export default function Dashboard({ auth }) {
                                 </button>
                             </>
                         );
-                        console.log(hideButtons.current);
                     }
-                    const peer = addPeer(
-                        payload.signal,
-                        payload.callerID,
-                        stream
-                    );
-                    peersRef.current.push({
-                        peer,
-                        peerID: payload.callerID,
-                    });
-
-                    const peerObj = { peer, peerID: payload.callerID };
-                    setPeers((users) => [...users, peerObj]);
                 });
 
                 socketRef.current.on("receiving returned signal", (payload) => {
@@ -130,12 +150,25 @@ export default function Dashboard({ auth }) {
                         (p) => p.peerID === payload.id
                     );
                     item.peer.signal(payload.signal);
+                    console.log("receive signal");
                 });
 
-                socketRef.current.on("hide cam", hideVideo);
-                socketRef.current.on("show cam", showVideo);
-                socketRef.current.on("hide audio", hideAudio);
-                socketRef.current.on("show audio", showAudio);
+                socketRef.current.on(
+                    "hide cam",
+                    hideVideo.bind(null, userStream.current)
+                );
+                socketRef.current.on(
+                    "show cam",
+                    showVideo.bind(null, userStream.current)
+                );
+                socketRef.current.on(
+                    "hide audio",
+                    hideAudio.bind(null, userStream.current)
+                );
+                socketRef.current.on(
+                    "show audio",
+                    showAudio.bind(null, userStream.current)
+                );
 
                 socketRef.current.on("user left", (id) => {
                     const peerObj = peersRef.current.find(
@@ -153,156 +186,22 @@ export default function Dashboard({ auth }) {
             });
     }, []);
 
-    function createPeer(userToSignal, callerID, stream) {
-        console.log(stream);
-        const peer = new Peer({
-            initiator: true,
-            trickle: false,
-            stream,
-        });
-        peer.on("signal", (signal) => {
-            socketRef.current.emit("sending signal", {
-                userToSignal,
-                callerID,
-                signal,
-            });
-        });
-
-        return peer;
-    }
-
-    function addPeer(incomingSignal, callerID, stream) {
-        console.log(callerID);
-        const peer = new Peer({
-            initiator: false,
-            trickle: false,
-            stream,
-        });
-
-        peer.on("signal", (signal) => {
-            socketRef.current.emit("returning signal", { signal, callerID });
-        });
-
-        peer.signal(incomingSignal);
-
-        return peer;
-    }
-
-    const handleToggleVideo = (stream) => {
-        console.log(stream);
-        const videoTrack = stream
-            .getTracks()
-            .find((track) => track.kind === "video");
-        if (videoTrack.enabled) {
-            videoTrack.enabled = false;
-            setIsVideo(true);
-        } else {
-            videoTrack.enabled = true;
-            setIsVideo(false);
-        }
-    };
-
-    const handleToggleAudio = (stream) => {
-        console.log(stream);
-        const audioTrack = stream
-            .getTracks()
-            .find((track) => track.kind === "audio");
-        if (audioTrack.enabled) {
-            audioTrack.enabled = false;
-            setIsAudio(true);
-        } else {
-            audioTrack.enabled = true;
-            setIsAudio(false);
-        }
-    };
-
     const handleToggleShareScreen = (userstream) => {
         navigator.mediaDevices
             .getDisplayMedia({ cursor: true, audio: true })
             .then((stream) => {
-                const screenTrack = stream.getTracks()[0];
                 const videoTrack = userstream
                     .getTracks()
                     .find((track) => track.kind === "video");
+                const screenTrack = stream.getTracks()[0];
                 userstream.removeTrack(videoTrack);
                 userstream.addTrack(screenTrack);
-
-                screenTrack.onended = function () {
-                    videoTrack.replaceTrack(userstream.getTracks()[1]);
-                };
+                peers.map((peer) => {
+                    console.log(peer);
+                    peer.peer.replaceTrack(videoTrack, screenTrack, userstream);
+                });
             });
     };
-
-    const handleToggleRemoteVideo = (e) => {
-        if (e.target.getAttribute("data-video") === "hide") {
-            e.target.setAttribute("data-video", "show");
-            socketRef.current.emit(
-                "hide remote cam",
-                e.target.getAttribute("data-id")
-            );
-        } else {
-            e.target.setAttribute("data-video", "hide");
-            socketRef.current.emit(
-                "show remote cam",
-                e.target.getAttribute("data-id")
-            );
-        }
-    };
-
-    const handleToggleRemoteAudio = (e) => {
-        if (e.target.getAttribute("data-audio") === "hide") {
-            e.target.setAttribute("data-audio", "show");
-            socketRef.current.emit(
-                "hide remote audio",
-                e.target.getAttribute("data-id")
-            );
-        } else {
-            e.target.setAttribute("data-audio", "hide");
-            socketRef.current.emit(
-                "show remote audio",
-                e.target.getAttribute("data-id")
-            );
-        }
-    };
-
-    function hideVideo() {
-        console.log("hide remote video");
-        const videoTrack = userStream.current
-            .getTracks()
-            .find((track) => track.kind === "video");
-        videoTrack.enabled = false;
-    }
-
-    function showVideo() {
-        const videoTrack = userStream.current
-            .getTracks()
-            .find((track) => track.kind === "video");
-        videoTrack.enabled = true;
-    }
-
-    function hideAudio() {
-        const videoTrack = userStream.current
-            .getTracks()
-            .find((track) => track.kind === "audio");
-        videoTrack.enabled = false;
-    }
-
-    function showAudio() {
-        const videoTrack = userStream.current
-            .getTracks()
-            .find((track) => track.kind === "audio");
-        videoTrack.enabled = true;
-    }
-
-    function copy() {
-        const el = document.createElement("input");
-        el.value = window.location.href;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand("copy");
-        document.body.removeChild(el);
-        setCopied(true);
-    }
 
     return (
         <>
@@ -338,21 +237,23 @@ export default function Dashboard({ auth }) {
                         })}
                         <div className="flex">
                             <button
-                                onClick={() =>
-                                    handleToggleVideo(userStream.current)
-                                }
+                                onClick={() => {
+                                    handleToggleVideo(userStream.current);
+                                    setIsVideo(!isVideo);
+                                }}
                                 className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
                             >
                                 {isVideo ? (
-                                    <i class="fa-solid fa-video text-xl"></i>
+                                    <i className="fa-solid fa-video text-xl"></i>
                                 ) : (
-                                    <i class="fa-solid fa-video-slash text-xl"></i>
+                                    <i className="fa-solid fa-video-slash text-xl"></i>
                                 )}
                             </button>
                             <button
-                                onClick={() =>
-                                    handleToggleAudio(userStream.current)
-                                }
+                                onClick={() => {
+                                    handleToggleAudio(userStream.current);
+                                    setIsAudio(!isAudio);
+                                }}
                                 className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
                             >
                                 {isAudio ? (
@@ -369,7 +270,7 @@ export default function Dashboard({ auth }) {
                                     socketRef.current.emit("exit");
                                 }}
                             >
-                                <i class="fa-solid fa-phone text-xl"></i>
+                                <i className="fa-solid fa-phone text-xl"></i>
                             </Link>
                             <button
                                 onClick={() =>
@@ -381,7 +282,10 @@ export default function Dashboard({ auth }) {
                             </button>
                             <button
                                 className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
-                                onClick={copy}
+                                onClick={() => {
+                                    setCopied(true);
+                                    copyURL;
+                                }}
                             >
                                 {!copied ? "Скопировать ссылку" : "Скопировано"}
                             </button>
