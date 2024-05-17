@@ -12,8 +12,9 @@ export function createPeer(userToSignal, callerID, stream, socket) {
             callerID,
             signal,
         });
+        console.log("sending signal");
+        console.log(userToSignal);
     });
-
     return peer;
 }
 
@@ -23,13 +24,16 @@ export function addPeer(incomingSignal, callerID, stream, socket) {
         initiator: false,
         trickle: false,
         stream,
+
     });
 
     peer.on("signal", (signal) => {
+        console.log('returning signal');
+        console.log(callerID);
         socket.emit("returning signal", { signal, callerID });
     });
-
-    peer.signal(incomingSignal);
-
+    console.log('incoming signal');
+    console.log(incomingSignal);
+    setTimeout(() => peer.signal(incomingSignal), 3000);
     return peer;
 }
