@@ -1,9 +1,5 @@
-import { Link, Head } from "@inertiajs/react";
-import img from "../../assets/logo.png";
-import { v1 as uuid } from "uuid";
 import { useState } from "react";
-import Modal from "@/Components/Modal";
-import UserMain from "@/Pages/UserMenu";
+
 import UserLayout from "./UserLayout";
 //import Modal from "./Modal";
 
