@@ -28,6 +28,7 @@ const io = require("socket.io")(server, {
 io.on('connection', socket => {
     socket.on("join room", roomID => {
         console.log('join room');
+        console.log(roomID);
         if (users[roomID]) {
             const length = users[roomID].length;
             if (length === 4) {
@@ -47,13 +48,18 @@ io.on('connection', socket => {
     });
 
     socket.on("sending signal", payload => {
-        io.to(payload.userToSignal).emit('user joined', { signal: payload.signal, callerID: payload.callerID });
+        console.log('sending signal');
+        console.log(payload.callerID);
+        io.to(payload.userToSignal).emit('user joined', { signal: payload.signal, callerID: payload.callerID })
         console.log("user joined");
     });
 
     socket.on("returning signal", payload => {
-        io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
+        console.log('returning signal');
+        console.log(payload.callerID);
+        io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id })
     });
+
 
     socket.on('disconnect', () => {
         const roomID = socketToRoom[socket.id];
@@ -104,6 +110,15 @@ io.on('connection', socket => {
         users[roomId] = room;
       }
       socket.broadcast.emit('user left', socket.id);
+    });
+
+    socket.on('start canvas', () => {
+      console.log('canvas');
+      socket.broadcast.emit('canvas');
+    })
+
+    socket.on('canvasImage', data => {
+      socket.broadcast.emit('canvasImage', data)
     });
 
 });
