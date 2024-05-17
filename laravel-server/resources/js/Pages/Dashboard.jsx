@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
-import Peer from "simple-peer";
 import styled from "styled-components";
 import img from "../../assets/logo.png";
 import { Link, Head } from "@inertiajs/react";
@@ -18,32 +17,17 @@ import {
 } from "@/Services/AudioService";
 import { copyURL } from "@/Services/URLSerivce";
 import { addPeer, createPeer } from "@/Services/PeerService";
+import {
+    showShareScreen,
+    hideShareScreen,
+} from "@/Services/ShareScreenService";
+import Canvas from "./Canvas";
+import Video from "./Video";
 
 const StyledVideo = styled.video`
-    height: 40%;
-    width: 50%;
+    height: 80%;
+    width: 90%;
 `;
-
-const Video = (props) => {
-    const ref = useRef();
-    console.log("video component peer");
-    console.log(props.peer);
-    useEffect(() => {
-        props.peer.on("stream", (stream) => {
-            ref.current.srcObject = stream;
-            const videoTrack = stream
-                .getTracks()
-                .find((track) => track.kind === "audio");
-            videoTrack.enabled = false;
-        });
-    }, []);
-
-    return (
-        <>
-            <StyledVideo controls autoPlay ref={ref} />
-        </>
-    );
-};
 
 const getLastItem = (path) => path.substring(path.lastIndexOf("/") + 1);
 
@@ -56,9 +40,10 @@ export default function Dashboard({ auth }) {
     const [copied, setCopied] = useState(false);
     const [isVideo, setIsVideo] = useState(false);
     const [isAudio, setIsAudio] = useState(false);
-    //const [isSharing, setIsSharing] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+    const [isCanvas, setIsCanvas] = useState(false);
     const isAdmin = useRef(false);
-    //const screenTrack = useRef();
+    const screenTrack = useRef();
     const hideButtons = useRef([]);
     const roomID = getLastItem(window.location.href);
 
@@ -66,13 +51,15 @@ export default function Dashboard({ auth }) {
         socketRef.current = io.connect(":8000");
         console.log(roomID);
         console.log(peers);
+        console.log(navigator.mediaDevices);
         navigator.mediaDevices
             .getUserMedia({ video: true, audio: true })
             .then((stream) => {
                 userStream.current = stream;
-                console.log(userStream);
                 userVideo.current.srcObject = stream;
+
                 socketRef.current.emit("join room", roomID);
+
                 socketRef.current.on("all users", (users) => {
                     console.log(`users: ${users}`);
                     if (users.length === 0) {
@@ -96,52 +83,54 @@ export default function Dashboard({ auth }) {
                 });
 
                 socketRef.current.on("user joined", (payload) => {
-                    const peer = addPeer(
-                        payload.signal,
-                        payload.callerID,
-                        stream,
-                        socketRef.current
-                    );
-                    peersRef.current.push({
-                        peer,
-                        peerID: payload.callerID,
-                    });
-                    const peerObj = { peer, peerID: payload.callerID };
-                    setPeers((users) => [...users, peerObj]);
-                    console.log("user joined");
-                    console.log(peers);
                     if (isAdmin.current) {
                         console.log("i am admin");
                         hideButtons.current.push(
                             <>
-                                <button
-                                    onClick={(e) =>
-                                        handleToggleRemoteVideo(
-                                            e,
-                                            socketRef.current
-                                        )
-                                    }
-                                    data-id={payload.callerID}
-                                    data-video="hide"
-                                    className="bg-blue-500 rounded-full w-[100px] h-[100px] mr-6  text-white"
-                                >
-                                    <i className="fa-solid fa-video text-xl"></i>
-                                </button>
-                                <button
-                                    onClick={(e) =>
-                                        handleToggleRemoteAudio(
-                                            e,
-                                            socketRef.current
-                                        )
-                                    }
-                                    data-id={payload.callerID}
-                                    data-audio="hide"
-                                    className="bg-blue-500 rounded-full w-[100px] h-[100px] mr-6  text-white"
-                                >
-                                    <i className="fa-solid fa-microphone text-xl"></i>
-                                </button>
+                                <div className="bg-gray-900 absolute p-2 pl-4 top-0 left-0 z-50">
+                                    <button
+                                        onClick={(e) =>
+                                            handleToggleRemoteVideo(
+                                                e,
+                                                socketRef.current
+                                            )
+                                        }
+                                        data-id={payload.callerID}
+                                        data-video="hide"
+                                        className="bg-gray-900 rounded-full w-[60px] h-[60px] mr-6 z-100 text-white"
+                                    >
+                                        <i className="fa-solid fa-video text-white text-xl"></i>
+                                    </button>
+                                    <button
+                                        onClick={(e) =>
+                                            handleToggleRemoteAudio(
+                                                e,
+                                                socketRef.current
+                                            )
+                                        }
+                                        data-id={payload.callerID}
+                                        data-audio="hide"
+                                        className="bg-gray-900 rounded-full w-[60px] h-[60px] mr-6 z-100 text-white"
+                                    >
+                                        <i className="fa-solid fa-microphone text-white text-xl"></i>
+                                    </button>
+                                </div>
                             </>
                         );
+                        console.log("user joined");
+                        console.log(peers);
+                        const peer = addPeer(
+                            payload.signal,
+                            payload.callerID,
+                            stream,
+                            socketRef.current
+                        );
+                        peersRef.current.push({
+                            peer,
+                            peerID: payload.callerID,
+                        });
+                        const peerObj = { peer, peerID: payload.callerID };
+                        setPeers((users) => [...users, peerObj]);
                     }
                 });
 
@@ -149,8 +138,9 @@ export default function Dashboard({ auth }) {
                     const item = peersRef.current.find(
                         (p) => p.peerID === payload.id
                     );
+                    console.log("receiving returned signal");
+                    console.log(payload.signal);
                     item.peer.signal(payload.signal);
-                    console.log("receive signal");
                 });
 
                 socketRef.current.on(
@@ -170,6 +160,10 @@ export default function Dashboard({ auth }) {
                     showAudio.bind(null, userStream.current)
                 );
 
+                socketRef.current.on("canvas", () => {
+                    setIsCanvas(!isCanvas);
+                });
+
                 socketRef.current.on("user left", (id) => {
                     const peerObj = peersRef.current.find(
                         (p) => p.peerID === id
@@ -183,59 +177,65 @@ export default function Dashboard({ auth }) {
                     peersRef.current = peers;
                     setPeers(peers);
                 });
-            });
+            })
+            .catch((error) => console.log(error));
     }, []);
 
     const handleToggleShareScreen = (userstream) => {
-        navigator.mediaDevices
-            .getDisplayMedia({ cursor: true, audio: true })
-            .then((stream) => {
-                const videoTrack = userstream
-                    .getTracks()
-                    .find((track) => track.kind === "video");
-                const screenTrack = stream.getTracks()[0];
-                userstream.removeTrack(videoTrack);
-                userstream.addTrack(screenTrack);
-                peers.map((peer) => {
-                    console.log(peer);
-                    peer.peer.replaceTrack(videoTrack, screenTrack, userstream);
-                });
-            });
+        !isSharing
+            ? showShareScreen(userstream, peers, screenTrack)
+            : hideShareScreen(userstream, peers, screenTrack);
     };
 
     return (
         <>
-            <Link href="/" className="flex justify-center">
-                <img
-                    className="h-32 w-32  text-white  lg:text-[#FF2D20]"
-                    viewBox="0 0 62 65"
-                    src={img}
-                ></img>
-            </Link>
-            <div className="py-12">
-                <div className="max-w-7xl  mx-auto sm:px-6 lg:px-8">
-                    <div>
-                        <StyledVideo
-                            muted
-                            controls
-                            ref={userVideo}
-                            autoPlay
-                            playsInline
-                        />
-                        {peers.map((peer, index) => {
-                            return (
+            <div class="h-full">
+                <Head>
+                    <meta head-key={Math.random(1, 1000)} />
+                </Head>
+                <Link href="/" className="flex bg-black justify-center">
+                    <img
+                        className="h-32 w-32  text-white  lg:text-[#FF2D20]"
+                        viewBox="0 0 62 65"
+                        src={img}
+                    ></img>
+                </Link>
+                <div className="py-12 bg-slate-900">
+                    <div className="max-w-7xl  mx-auto sm:px-6 lg:px-8 ">
+                        <div className="w-full h-full overfow-scroll">
+                            {isCanvas ? (
+                                <Canvas socket={socketRef.current} />
+                            ) : (
                                 <>
-                                    <div className="flex">
-                                        <Video
-                                            key={peer.peerID}
-                                            peer={peer.peer}
+                                    <div className="w-full grid h-[600px]   grid-cols-2">
+                                        <StyledVideo
+                                            controls
+                                            playsInline
+                                            ref={userVideo}
+                                            autoPlay
                                         />
-                                        {hideButtons.current[index]}
+                                        {peers.map((peer, index) => {
+                                            return (
+                                                <>
+                                                    <div className="relative">
+                                                        <Video
+                                                            key={peer.peerID}
+                                                            peer={peer.peer}
+                                                        />
+                                                        {
+                                                            hideButtons.current[
+                                                                index
+                                                            ]
+                                                        }
+                                                    </div>
+                                                </>
+                                            );
+                                        })}
                                     </div>
                                 </>
-                            );
-                        })}
-                        <div className="flex">
+                            )}
+                        </div>
+                        <div className="flex bg-black">
                             <button
                                 onClick={() => {
                                     handleToggleVideo(userStream.current);
@@ -257,9 +257,9 @@ export default function Dashboard({ auth }) {
                                 className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
                             >
                                 {isAudio ? (
-                                    <i class="fa-solid fa-microphone text-xl"></i>
+                                    <i className="fa-solid fa-microphone text-xl"></i>
                                 ) : (
-                                    <i class="fa-solid fa-microphone-slash text-xl"></i>
+                                    <i className="fa-solid fa-microphone-slash text-xl"></i>
                                 )}
                             </button>
                             <Link
@@ -273,21 +273,32 @@ export default function Dashboard({ auth }) {
                                 <i className="fa-solid fa-phone text-xl"></i>
                             </Link>
                             <button
-                                onClick={() =>
-                                    handleToggleShareScreen(userStream.current)
-                                }
+                                onClick={() => {
+                                    handleToggleShareScreen(userStream.current);
+                                    setIsSharing(!isSharing);
+                                }}
                                 className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
                             >
-                                <i class="fa-solid fa-desktop"></i>
+                                <i className="fa-solid fa-desktop"></i>
                             </button>
                             <button
                                 className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
                                 onClick={() => {
                                     setCopied(true);
-                                    copyURL;
+                                    copyURL();
                                 }}
                             >
                                 {!copied ? "Скопировать ссылку" : "Скопировано"}
+                            </button>
+                            <button
+                                className="bg-black rounded-full w-[100px] h-[100px] mr-6  text-white"
+                                onClick={() => {
+                                    console.log(isCanvas);
+                                    setIsCanvas(true);
+                                    socketRef.current.emit("start canvas");
+                                }}
+                            >
+                                Canvas
                             </button>
                         </div>
                     </div>
