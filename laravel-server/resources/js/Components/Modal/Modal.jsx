@@ -7,6 +7,7 @@ export default function Modal({
     maxWidth = "2xl",
     closeable = true,
     onClose = () => {},
+    title,
 }) {
     const close = () => {
         if (closeable) {
@@ -55,7 +56,7 @@ export default function Modal({
                         className={`mb-6 p-10 bg-white rounded-xl overflow-hidden shadow-xl transform transition-all sm:w-full sm:mx-auto ${maxWidthClass}`}
                     >
                         <Dialog.Title className="text-xl flex justify-between font-medium leading-6 text-gray-900">
-                            <p className="text-2xl">Подключиться</p>
+                            <p className="text-2xl">{title}</p>
                             <a
                                 onClick={close}
                                 className="cursor-pointer text-black hover:text-red-500"
