@@ -27,8 +27,11 @@
     "dependencies": {
         "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
         "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+        "clsx": "^2.1.1",
+        "date-fns": "^3.6.0",
         "flowbite": "^2.3.0",
         "rollup-plugin-polyfill-node": "^0.13.0",
-        "simple-peer": "^9.11.1"
+        "simple-peer": "^9.11.1",
+        "webrtc-adapter": "^9.0.1"
     }
 }
