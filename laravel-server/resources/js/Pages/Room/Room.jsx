@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import { Link } from "@inertiajs/react";
-import VideoButtonCard from "@/Components/Card/VideoButtonCard";
 import {
     handleToggleVideo,
     handleToggleRemoteVideo,
@@ -22,6 +21,7 @@ import {
 } from "@/Services/ShareScreenService";
 import Canvas from "../../Components/Canvas/Canvas";
 import Video from "../../Components/Video/Video";
+import adapter from "webrtc-adapter";
 
 const getLastItem = (path) => path.substring(path.lastIndexOf("/") + 1);
 
@@ -43,6 +43,7 @@ export default function Room({ auth }) {
 
     useEffect(() => {
         socketRef.current = io.connect(":8000");
+        adapter.browserDetails.browser;
         console.log(roomID);
         console.log(peers);
         console.log(navigator.mediaDevices);
