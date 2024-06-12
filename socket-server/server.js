@@ -48,15 +48,12 @@ io.on('connection', socket => {
     });
 
     socket.on("sending signal", payload => {
-        console.log('sending signal');
-        console.log(payload.callerID);
+        console.log(`sending signal from ${payload.callerID} to ${payload.userToSignal} that user joined`);
         io.to(payload.userToSignal).emit('user joined', { signal: payload.signal, callerID: payload.callerID })
-        console.log("user joined");
     });
 
     socket.on("returning signal", payload => {
-        console.log('returning signal');
-        console.log(payload.callerID);
+        console.log(`returning signal to ${payload.callerID}`);
         io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id })
     });
 
