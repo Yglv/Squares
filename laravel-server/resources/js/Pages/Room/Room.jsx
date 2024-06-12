@@ -112,28 +112,28 @@ export default function Room({ auth }) {
                                 </div>
                             </>
                         );
-                        console.log("user joined");
-                        console.log(peers);
-                        const peer = addPeer(
-                            payload.signal,
-                            payload.callerID,
-                            stream,
-                            socketRef.current
-                        );
-                        peersRef.current.push({
-                            peer,
-                            peerID: payload.callerID,
-                        });
-                        const peerObj = { peer, peerID: payload.callerID };
-                        setPeers((users) => [...users, peerObj]);
                     }
+                    console.log("user joined");
+                    console.log(peers);
+                    const peer = addPeer(
+                        payload.signal,
+                        payload.callerID,
+                        stream,
+                        socketRef.current
+                    );
+                    peersRef.current.push({
+                        peer,
+                        peerID: payload.callerID,
+                    });
+                    const peerObj = { peer, peerID: payload.callerID };
+                    setPeers((users) => [...users, peerObj]);
                 });
 
                 socketRef.current.on("receiving returned signal", (payload) => {
                     const item = peersRef.current.find(
                         (p) => p.peerID === payload.id
                     );
-                    console.log("receiving returned signal");
+                    console.log(`receiving returned signal from ${payload.id}`);
                     console.log(payload.signal);
                     item.peer.signal(payload.signal);
                 });
