@@ -3,7 +3,7 @@ export default function CustomButton(props) {
         <button className="relative w-full flex items-center justify-center gap-6">
             <div className="flex items-center gap-6">
                 <div
-                    className={`flex p-10 shrink-0 items-center justify-center rounded-full ${props.background} sm:size-16`}
+                    className={`flex p-2 shrink-0 items-center justify-center rounded-full ${props.background} sm:size-16`}
                 >
                     <i className={`${props.pin} text-white text-2xl`}></i>
                 </div>
