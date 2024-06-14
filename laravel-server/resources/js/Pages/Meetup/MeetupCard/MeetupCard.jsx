@@ -15,17 +15,23 @@ export default function MeetupCard(props) {
 
     return (
         <>
-            <div className="group flex cursor-pointer relative max-w-[600px] min-w-[350px] border-none w-full min-h-[140px] shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] border-2  rounded-[25px]   ">
+            <div
+                className={`group flex cursor-pointer relative ${props.width} ${props.height}  border-none w-full min-h-[140px] shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] border-2  rounded-[25px]   `}
+            >
                 <div className="flex  justify-center flex-col  w-full h-full">
                     <div className="flex">
                         <div className="flex p-10 ml-4 mt-2 shrink-0 items-center justify-center rounded-full bg-[#00BFFF] sm:size-16">
-                            <i className="fa-solid fa-phone text-white text-2xl"></i>
+                            <i
+                                className={`fa-solid fa-phone text-white  ${props.icon}`}
+                            ></i>
                         </div>
-                        <div className="flex flex-col ml-16">
-                            <p className="text-[34px] font-sans font-normal">
+                        <div className="flex flex-col ml-16 h-[80%] items-center justify-between">
+                            <p
+                                className={`${props.text} font-sans font-normal`}
+                            >
                                 {props.data.future_meetup_title}
                             </p>
-                            <p className="text-[34px] font-sans mt-[-5px]">
+                            <p className={`${props.text}  font-sans `}>
                                 {props.data.future_meetup_date}
                             </p>
                         </div>
