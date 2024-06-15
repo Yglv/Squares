@@ -11,6 +11,7 @@ import {
 import clsx from "clsx";
 import MeetupCard from "../Meetup/MeetupCard/MeetupCard";
 import { useState, useEffect } from "react";
+import { useDebugValue } from "react";
 
 const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
@@ -64,6 +65,11 @@ export default function MeetupCalendar({ meetups }) {
         );
     }, [selectedDay]);
 
+    useEffect(() => {
+        console.log(currentDate.getTime);
+        console.log(daysInMonth);
+    }, []);
+
     return (
         <>
             <div className="flex">
@@ -115,7 +121,13 @@ export default function MeetupCalendar({ meetups }) {
                                 {meetups.filter((meetup) =>
                                     isSameDay(meetup.future_meetup_date, day)
                                 ).length !== 0 && (
-                                    <div className="w-[20px] h-[20px] rounded-[100%] bg-green-500 mx-auto my-0"></div>
+                                    <div
+                                        className={
+                                            day.getTime() >= Date.now()
+                                                ? "w-[20px] h-[20px] rounded-[100%] bg-green-500 mx-auto my-0"
+                                                : "w-[20px] h-[20px] rounded-[100%] bg-red-500 mx-auto my-0"
+                                        }
+                                    ></div>
                                 )}
                             </div>
                         ))}
