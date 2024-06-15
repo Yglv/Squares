@@ -109,6 +109,11 @@ io.on('connection', socket => {
       socket.broadcast.emit('user left', socket.id);
     });
 
+    socket.on(('remote exit'), (targetId) => {
+      console.log(targetId)
+      io.to(targetId).emit('exit from admin');
+    });
+
     socket.on('start canvas', () => {
       console.log('canvas');
       socket.broadcast.emit('canvas');
@@ -116,6 +121,11 @@ io.on('connection', socket => {
 
     socket.on('canvasImage', data => {
       socket.broadcast.emit('canvasImage', data)
+    });
+
+    socket.on('send message', data => {
+      console.log(data);
+      socket.broadcast.emit('message', data);
     });
 
 });
