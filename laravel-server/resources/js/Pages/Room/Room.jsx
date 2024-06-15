@@ -22,6 +22,7 @@ import {
 import Canvas from "../../Components/Canvas/Canvas";
 import Video from "../../Components/Video/Video";
 import adapter from "webrtc-adapter";
+import Chat from "@/Components/Chat/Chat";
 
 const getLastItem = (path) => path.substring(path.lastIndexOf("/") + 1);
 
@@ -36,10 +37,20 @@ export default function Room({ auth }) {
     const [isAudio, setIsAudio] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
     const [isCanvas, setIsCanvas] = useState(false);
+    const [isChat, setIsChat] = useState(false);
     const isAdmin = useRef(false);
     const screenTrack = useRef();
     const hideButtons = useRef([]);
     const roomID = getLastItem(window.location.href);
+
+    const handleExitFromAdmin = () => {
+        console.log("disconnect");
+        let a = document.createElement("a");
+        a.href = "/";
+        a.click();
+        socketRef.current.emit("exit");
+        setTimeout(() => window.location.reload(), 3000);
+    };
 
     useEffect(() => {
         socketRef.current = io.connect(":8000");
@@ -77,12 +88,17 @@ export default function Room({ auth }) {
                     setPeers(peers);
                 });
 
+                socketRef.current.on(
+                    "exit from admin",
+                    handleExitFromAdmin.bind(null)
+                );
+
                 socketRef.current.on("user joined", (payload) => {
                     if (isAdmin.current) {
                         console.log("i am admin");
                         hideButtons.current.push(
                             <>
-                                <div className="flex bg-black w-[200px] h-[25px] rounded-lg  shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05]  absolute  top-[5px] left-[40%] z-50 ">
+                                <div className="flex bg-zinc-700 w-[200px] h-[25px] rounded-[15px] focus:rounded-[15px] opacity-55 hover:opacity-100  ring-1 ring-white/[0.05]  absolute  top-[5px] left-[40%] z-50 ">
                                     <button
                                         onClick={(e) =>
                                             handleToggleRemoteVideo(
@@ -92,9 +108,23 @@ export default function Room({ auth }) {
                                         }
                                         data-id={payload.callerID}
                                         data-video="hide"
-                                        className="flex bg-black items-center justify-center  w-[50%] h-full pl-4 pr-4  border-r-2 border-white  z-1000 text-white hover:bg-gray-500"
+                                        className="flex bg-zinc-700 items-center justify-center rounded-tl-[15px] rounded-bl-[15px] focus:rounded-tl-[15px] focus:rounded-bl-[15px]   w-[50%] h-full pl-4 pr-4  border-r-2 border-white  z-1000 text-white hover:bg-zinc-500"
                                     >
                                         <i className="fa-solid fa-video text-white text-sm text-center"></i>
+                                    </button>
+                                    <button
+                                        onClick={(event) =>
+                                            socketRef.current.emit(
+                                                "remote exit",
+                                                event.target.getAttribute(
+                                                    "data-id"
+                                                )
+                                            )
+                                        }
+                                        data-id={payload.callerID}
+                                        className="flex bg-zinc-700 items-center justify-center w-[50%] h-full pl-4 pr-4  border-r-2 border-white  z-1000 text-white hover:bg-zinc-500"
+                                    >
+                                        <i className="fa-solid fa-phone text-sm text-center text-white"></i>
                                     </button>
                                     <button
                                         onClick={(e) =>
@@ -105,7 +135,7 @@ export default function Room({ auth }) {
                                         }
                                         data-id={payload.callerID}
                                         data-audio="hide"
-                                        className="flex bg-black items-center justify-center  w-[50%] h-full pl-4 pr-4  z-1000 text-white hover:bg-gray-500"
+                                        className="flex bg-zinc-700 items-center justify-center rounded-tr-[15px] rounded-br-[15px] focus:rounded-tr-[15px] focus:rounded-br-[15px]  w-[50%] h-full pl-4 pr-4  z-1000 text-white hover:bg-zinc-500"
                                     >
                                         <i className="fa-solid fa-microphone text-white text-sm text-center"></i>
                                     </button>
@@ -159,7 +189,13 @@ export default function Room({ auth }) {
                     setIsCanvas(!isCanvas);
                 });
 
+                socketRef.current.on("message", (data) => {
+                    console.log(data);
+                    //setState((state) => [...state, data]);
+                });
+
                 socketRef.current.on("user left", (id) => {
+                    console.log(id);
                     const peerObj = peersRef.current.find(
                         (p) => p.peerID === id
                     );
@@ -230,13 +266,14 @@ export default function Room({ auth }) {
                                 })}
                             </div>
                         </div>
-                        <div className="flex mt-10  justify-center">
+                        <div className="flex mt-[-10px]  justify-center">
                             <div
                                 onClick={() => {
                                     handleToggleVideo(userStream.current);
                                     setIsVideo(!isVideo);
                                 }}
-                                className="flex mr-4 w-[75px] h-[75px] items-center justify-center group gap-6 overflow-hidden rounded-lg bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A]  dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 "
+                                title="Включить видео"
+                                className="flex mr-4 w-[75px] h-[75px] cursor-pointer items-center justify-center group gap-6 overflow-hidden rounded-lg bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A]  dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 "
                             >
                                 {isVideo ? (
                                     <i className="fa-solid fa-video text-xl text-white"></i>
@@ -249,7 +286,7 @@ export default function Room({ auth }) {
                                     handleToggleAudio(userStream.current);
                                     setIsAudio(!isAudio);
                                 }}
-                                className="flex mr-4 w-[75px] h-[75px] items-center justify-center group gap-6 overflow-hidden rounded-lg bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
+                                className="flex mr-4 w-[75px] h-[75px] cursor-pointer items-center justify-center group gap-6 overflow-hidden rounded-lg bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
                             >
                                 {isAudio ? (
                                     <i className="fa-solid fa-microphone text-xl text-white"></i>
@@ -259,10 +296,14 @@ export default function Room({ auth }) {
                             </div>
                             <Link
                                 href="/"
-                                className="flex mr-4 w-[75px] h-[75px] items-center justify-center group gap-6 overflow-hidden rounded-lg bg-red-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
+                                className="flex mr-4 w-[75px] h-[75px] cursor-pointer items-center justify-center group gap-6 overflow-hidden rounded-lg focus:rouned-lg bg-red-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
                                 onClick={() => {
                                     console.log("disconnect");
                                     socketRef.current.emit("exit");
+                                    setTimeout(
+                                        () => window.location.reload(),
+                                        1000
+                                    );
                                 }}
                             >
                                 <i className="fa-solid fa-phone text-xl text-white"></i>
@@ -272,12 +313,12 @@ export default function Room({ auth }) {
                                     handleToggleShareScreen(userStream.current);
                                     setIsSharing(!isSharing);
                                 }}
-                                className="flex mr-4 w-[75px] h-[75px] items-center justify-center group gap-6 overflow-hidden rounded-lg bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
+                                className="flex mr-4 w-[75px] h-[75px] cursor-pointer items-center justify-center group gap-6 overflow-hidden rounded-lg bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
                             >
                                 <i className="fa-solid fa-desktop text-white"></i>
                             </div>
                             <div
-                                className="flex mr-4 w-[75px] h-[75px] items-center justify-center group gap-6 overflow-hidden rounded-lg bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
+                                className="flex mr-4 w-[75px] h-[75px] cursor-pointer items-center justify-center group gap-6 overflow-hidden rounded-lg bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 hover:bg-[#FF216A] focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
                                 onClick={() => {
                                     setCopied(true);
                                     copyURL();
@@ -295,9 +336,21 @@ export default function Room({ auth }) {
                             >
                                 <i className="fa-solid fa-paintbrush text-xl text-white"></i>
                             </div>
+                            <div
+                                className="flex mr-4 cursor-pointer w-[75px] h-[75px] items-center justify-center group gap-6 border-1 rounded-[9px] bg-gray-500 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)]    hover:bg-[#FF216A]  ring-1 ring-white/[0.05] transition duration-300  hover:ring-black/40 focus:outline-none focus-visible:ring-[#FF2D20] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20] "
+                                onClick={() => {
+                                    console.log(isCanvas);
+                                    setIsChat(!isChat);
+                                }}
+                            >
+                                <i className="fa-brands fa-rocketchat text-xl text-white"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
+                {isChat && (
+                    <Chat socket={socketRef.current} setIsChat={setIsChat} />
+                )}
             </div>
         </>
     );
