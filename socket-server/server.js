@@ -5,6 +5,7 @@ const app = express();
 const server = http.createServer(app);
 const socket = require("socket.io");
 const cors = require('cors');
+const translatte = require('translatte');
 
 
 const users = {};
@@ -126,6 +127,14 @@ io.on('connection', socket => {
     socket.on('send message', data => {
       console.log(data);
       socket.broadcast.emit('message', data);
+    });
+
+    socket.on('translate', data => {
+      console.log(data);
+      translatte(data.message, {to: data.lang}).then(res => {
+        console.log(res.text);
+        socket.emit('translated text', res);
+      }).catch(err => console.error(err))
     });
 
 });
